@@ -12,16 +12,25 @@ class Player extends StatefulWidget {
 }
 
 class _PlayerState extends State<Player> {
-  final player = AudioPlayer();
+  final _player = AudioPlayer();
 
   /// 标题
   String title = "";
 
   /// 是否正在播放
-  bool isPlaying = false;
+  bool _isPlaying = false;
+
+  /// 进度
+  Duration _position = Duration.zero;
+
+  /// 音频长度
+  Duration _audioLength = Duration.zero;
+
+  /// 时间长度
+  String _time = "00:00/00:00";
 
   _PlayerState() {
-    initEventListener();
+    _initEventListener();
   }
 
   @override
@@ -40,10 +49,39 @@ class _PlayerState extends State<Player> {
               children: [Text(title)],
             ),
 
+            /// 进度条
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Expanded(
+                    flex: 5,
+                    child: Slider(
+                      value: _position.inMilliseconds.toDouble(),
+                      max: _audioLength.inMilliseconds.toDouble(),
+                      onChangeStart: (value) {
+                        if (_isPlaying) {
+                          _player.pause();
+                        }
+                      },
+                      onChanged: (value) {
+                        setState(() {
+                          _position = Duration(milliseconds: value.toInt());
+                          _time = _calPlayTime();
+                        });
+                      },
+                      onChangeEnd: (value) {
+                        _player.seek(Duration(milliseconds: value.toInt()));
+                        _player.resume();
+                      },
+                    )),
+                Text(_time)
+              ],
+            ),
+
             /// 播放器控制区
             Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
               /// 左侧
-               Expanded(
+              Expanded(
                 flex: 2,
                 child: Container(),
               ),
@@ -52,19 +90,20 @@ class _PlayerState extends State<Player> {
               Expanded(
                   flex: 1,
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      IconButton(
-                          icon: const Icon(Icons.skip_previous),
-                          onPressed: () {}),
-                      IconButton(
-                        icon: Icon(isPlaying ? Icons.pause : Icons.play_arrow),
-                        onPressed: playButtonClick,
-                      ),
-                      IconButton(
-                          icon: const Icon(Icons.skip_next), onPressed: () {}),
-                    ]
-                  )),
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        IconButton(
+                            icon: const Icon(Icons.skip_previous),
+                            onPressed: () {}),
+                        IconButton(
+                          icon:
+                              Icon(_isPlaying ? Icons.pause : Icons.play_arrow),
+                          onPressed: _playButtonClick,
+                        ),
+                        IconButton(
+                            icon: const Icon(Icons.skip_next),
+                            onPressed: () {}),
+                      ])),
 
               /// 右侧
               Expanded(
@@ -83,11 +122,11 @@ class _PlayerState extends State<Player> {
   }
 
   /// 播放按钮点击
-  playButtonClick() {
-    if (isPlaying) {
-      player.pause();
+  _playButtonClick() {
+    if (_isPlaying) {
+      _player.pause();
     } else {
-      player.resume();
+      _player.resume();
     }
   }
 
@@ -104,23 +143,48 @@ class _PlayerState extends State<Player> {
   /// 根据url播放文件
   /// [url] 路径url
   play(String title, String url) async {
-    await player.play(DeviceFileSource(url));
+    await _player.play(DeviceFileSource(url));
+    Duration? length = await _player.getDuration();
     setState(() {
       this.title = title;
+      _audioLength = length!;
     });
   }
 
   ///播放器事件监听初始化
-  initEventListener() {
+  _initEventListener() {
     // 播放器状态改变
-    player.onPlayerStateChanged.listen((event) {
+    _player.onPlayerStateChanged.listen((event) {
       setState(() {
-        isPlaying = event == PlayerState.playing;
+        _isPlaying = event == PlayerState.playing;
       });
     });
     // 当前歌曲播放完成
-    player.onPlayerComplete.listen((event) {
-      player.resume();
+    _player.onPlayerComplete.listen((event) {
+      _player.resume();
     });
+    // 进度改变
+    _player.onPositionChanged.listen((event) async {
+      setState(() {
+        _position = event;
+        _time = _calPlayTime();
+      });
+    });
+  }
+
+  /// 计算播放时间字符串
+  String _calPlayTime() {
+    if (_audioLength == Duration.zero) {
+      return "00:00/00:00";
+    }
+    String format(int source) {
+      if (source < 10) {
+        return "0$source";
+      } else {
+        return source.toString();
+      }
+    }
+
+    return "${format(_position.inMinutes)}:${format(_position.inSeconds % 60)}/${format(_audioLength.inMinutes)}:${format(_audioLength.inSeconds % 60)}";
   }
 }
