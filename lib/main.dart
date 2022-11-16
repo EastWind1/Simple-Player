@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 import 'package:flutter/material.dart';
-import 'package:simple_player/player.dart';
+import 'package:simple_player/player/player.dart';
 
 void main() {
   runApp(const MyApp());
