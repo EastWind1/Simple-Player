@@ -23,11 +23,13 @@ class PlayList {
     musics.add(music);
     _curPlayIndex = musics.length - 1;
     streamController.add(PlayListEvent(type: PlayListEventType.add));
+    streamController.add(PlayListEvent(type: PlayListEventType.tap, music: musics[_curPlayIndex]));
   }
   addAll(List<Music> music) {
     musics.addAll(music);
     _curPlayIndex = musics.length - 1;
     streamController.add(PlayListEvent(type: PlayListEventType.add));
+    streamController.add(PlayListEvent(type: PlayListEventType.tap, music: musics[_curPlayIndex]));
   }
   Music? get next {
     if (musics.isEmpty) {

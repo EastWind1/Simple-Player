@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 class Music {
   String id = const Uuid().v4();
   String name;
+  String? artist;
   String url;
   bool isLocal;
   Image? cover;
@@ -15,5 +16,6 @@ class Music {
       required this.url,
       this.isLocal = true,
       this.cover,
-      this.length});
+      this.length,
+      this.artist});
 }

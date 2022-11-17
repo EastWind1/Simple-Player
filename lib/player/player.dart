@@ -1,14 +1,16 @@
 import 'dart:async';
+import 'dart:math';
 
+import 'package:audioplayers/audioplayers.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:just_audio/just_audio.dart';
 import 'package:simple_player/common/music.dart';
 import 'package:simple_player/player/playlist.dart';
 
 class Player extends StatefulWidget {
-  const Player({Key? key}) : super(key: key);
+  final PlayList playList;
+  const Player({Key? key, required this.playList}) : super(key: key);
 
   @override
   State<Player> createState() => _PlayerState();
@@ -39,9 +41,8 @@ class _PlayerState extends State<Player> {
   @override
   void initState() {
     super.initState();
-
+    _playList = widget.playList;
     _player = AudioPlayer();
-    _playList = PlayList();
 
     _initEventListener();
   }
@@ -49,24 +50,26 @@ class _PlayerState extends State<Player> {
   ///播放器事件监听初始化
   _initEventListener() {
     // 播放器状态改变
-    _playerStateSubscription = _player.playerStateStream.listen((event) {
+    _playerStateSubscription = _player.onPlayerStateChanged.listen((event) {
       setState(() {
-        _isPlaying = event.playing;
+        _isPlaying = event == PlayerState.playing;
       });
+      // 播放完成
+      if (event == PlayerState.completed) {
+        play(_playList.next);
+      }
     });
     // 进度改变
-    _playerDurationSubscription = _player.positionStream.listen((event) {
+    _playerDurationSubscription = _player.onPositionChanged.listen((event) {
       if (_curMusic != null && _curMusic!.length != null) {
         String formatResult =
             "${_formatDuration(event)}/${_formatDuration(_curMusic!.length!)}";
         setState(() {
-          _position = event.inMilliseconds / _curMusic!.length!.inMilliseconds;
+          // TODO: position位置异常，https://github.com/ryanheise/just_audio/issues/778
+          _position =
+              min(1, event.inMilliseconds / _curMusic!.length!.inMilliseconds);
           _time = formatResult;
         });
-        // 播放完成
-        if (event == _curMusic!.length! && !_isPlaying) {
-          play(_playList.next);
-        }
       }
     });
 
@@ -85,6 +88,7 @@ class _PlayerState extends State<Player> {
         left: 0,
         right: 0,
         child: Container(
+          color: Colors.white,
           alignment: Alignment.center,
           child: Column(children: [
             /// 标题区
@@ -98,37 +102,33 @@ class _PlayerState extends State<Player> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Expanded(
-                    flex: 5,
                     child: Slider(
-                      value: _position,
-                      onChangeStart: (value) {
-                        if (_isPlaying) {
-                          _player.pause();
-                        }
-                      },
-                      onChanged: (value) {
-                        Duration cur = Duration(
-                            milliseconds:
-                                (value * _curMusic!.length!.inMilliseconds)
-                                    .toInt());
-                        String formatResult =
-                            "${_formatDuration(cur)}/${_formatDuration(_curMusic!.length!)}";
-                        setState(() {
-                          _position = value;
-                          _time = formatResult;
-                        });
-                      },
-                      onChangeEnd: (value) {
-                        if (_curMusic != null) {
-                          _player.seek(Duration(
-                              milliseconds:
-                                  (value * _curMusic!.length!.inMilliseconds)
-                                      .toInt()));
-                          _player.play();
-                        }
-                      },
-                    )),
-                Text(_time)
+                  value: _position,
+                  onChangeStart: (value) {
+                    if (_isPlaying) {
+                      _player.pause();
+                    }
+                  },
+                  onChanged: (value) {
+                    Duration cur = _curMusic!.length! * value;
+                    String formatResult =
+                        "${_formatDuration(cur)}/${_formatDuration(_curMusic!.length!)}";
+                    setState(() {
+                      _position = value;
+                      _time = formatResult;
+                    });
+                  },
+                  onChangeEnd: (value) async {
+                    if (_curMusic != null) {
+                      Duration cur = value < 1
+                          ? _curMusic!.length! * value
+                          : _curMusic!.length!;
+                      await _player.seek(cur);
+                      _player.resume();
+                    }
+                  },
+                )),
+                SizedBox(width: 100, child: Text(_time))
               ],
             ),
 
@@ -199,19 +199,21 @@ class _PlayerState extends State<Player> {
     if (_isPlaying) {
       _player.pause();
     } else {
-      _player.play();
+      _player.resume();
     }
   }
 
   /// 选择本地文件并播放
   selectFile() async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles(allowMultiple: true, type: FileType.custom, allowedExtensions: ['mp3', 'aac', 'ogg', 'mp4', 'wav', 'flac']);
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+        allowMultiple: true,
+        type: FileType.custom,
+        allowedExtensions: ['mp3', 'aac', 'ogg', 'mp4', 'wav', 'flac']);
     if (result != null && result.files.isNotEmpty) {
       List<Music> musics = result.files
-          .map((file) => Music(name: file.name, url: file.path!))
+          .map((file) => Music(name: file.name, url: file.path!, isLocal: true))
           .toList();
       _playList.addAll(musics);
-      play(musics[musics.length - 1]);
     }
   }
 
@@ -222,12 +224,16 @@ class _PlayerState extends State<Player> {
       return;
     }
     _curMusic = music;
-    await _player.stop();
-    _player.setUrl("file://${music.url}");
-    await _player.play();
-    Duration? length = _player.duration;
-    if (music.length == null && length != null) {
-      music.length = length;
+    await _player.pause();
+    if (music.isLocal) {
+      await _player.setSourceUrl(Uri.encodeFull("file://${music.url}"));
+    } else {
+      await _player.setSourceUrl(Uri.encodeFull(music.url));
+    }
+    await _player.resume();
+    Duration? duration = await _player.getDuration();
+    if (music.length == null && duration != null) {
+      music.length = duration;
     }
     setState(() {
       title = music.name;
@@ -256,6 +262,5 @@ class _PlayerState extends State<Player> {
     _playListSubscription.cancel();
     _playerStateSubscription.cancel();
     _playerDurationSubscription.cancel();
-    _playList.dispose();
   }
 }
