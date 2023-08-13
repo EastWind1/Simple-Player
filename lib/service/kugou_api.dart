@@ -1,9 +1,9 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'package:simple_player/pojo/music.dart';
 import 'package:simple_player/service/platform_api.dart';
+import 'package:http/http.dart' as http;
 
-class KuwoApi extends PlatFormApi {
+class KugouApi extends PlatFormApi {
   @override
   Future<Music?> getDetail(MusicInfo info) async {
     http.Response res = await http.get(Uri.parse("http://antiserver.kuwo.cn/anti.s?type=convert_url&rid=${info.hash}&format=mp3&response=url"));
@@ -16,15 +16,15 @@ class KuwoApi extends PlatFormApi {
 
   @override
   Future<List<MusicInfo>> search(String keyWord, int pageIndex, int pageSize) async {
-    http.Response res = await http.get(Uri.parse("http://search.kuwo.cn/r.s?all=$keyWord&ft=music& itemset=web_2013&client=kt&pn=$pageIndex&rn=$pageSize&rformat=json&encoding=utf8"));
+    http.Response res = await http.get(Uri.parse("http://mobilecdn.kugou.com/api/v3/search/song?format=json&keyword=$keyWord&page=$pageIndex&pagesize=$pageSize&showtype=1"));
 
     if (res.statusCode == 200) {
-      List<dynamic> list = jsonDecode(res.body.replaceAll("'", "\""))['abslist'] as List<dynamic>;
+      List<dynamic> list = jsonDecode(res.body)['data']['info'] as List<dynamic>;
 
       List<MusicInfo> mapResult = [];
       for (var value in list) {
         Map<String, dynamic> cur = value as Map<String, dynamic>;
-        mapResult.add(MusicInfo(hash: cur['MUSICRID'], name: cur['SONGNAME'], artist: cur['ARTIST']));
+        mapResult.add(MusicInfo(hash: cur['hash'], name: cur['songname'], artist: cur['singername']));
       }
       return mapResult;
     } else {
