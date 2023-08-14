@@ -6,6 +6,7 @@ import 'package:simple_player/pojo/music.dart';
 class PlayListWidget extends StatefulWidget {
   /// 列表项点击事件
   final void Function(Music) onItemTap;
+
   const PlayListWidget({super.key, required this.onItemTap});
 
   @override
@@ -18,36 +19,22 @@ class PlayListWidgetState extends State<PlayListWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text("PlayList"),
-            IconButton(
-                onPressed: () {
-                  Navigator.pop(context);
+    return Expanded(
+        child: ListView.builder(
+            itemCount: _musics.length,
+            itemBuilder: (BuildContext context, int index) {
+              return ListTile(
+                selected: index == _curPlayIndex,
+                title: Text(_musics[index].name),
+                tileColor: index == _curPlayIndex ? Colors.grey : null,
+                onTap: () {
+                  widget.onItemTap(_musics[index]);
+                  setState(() {
+                    _curPlayIndex = index;
+                  });
                 },
-                icon: const Icon(Icons.close))
-          ],
-        ),
-        Expanded(
-            child: ListView.builder(
-                itemCount: _musics.length,
-                itemBuilder: (BuildContext context, int index) {
-                  return ListTile(
-                    title: Text(_musics[index].name),
-                    tileColor: index == _curPlayIndex ? Colors.grey : null,
-                    onTap: () {
-                      widget.onItemTap(_musics[index]);
-                      setState(() {
-                        _curPlayIndex = index;
-                      });
-                    },
-                  );
-                }))
-      ],
-    );
+              );
+            }));
   }
 
   add(Music music) {

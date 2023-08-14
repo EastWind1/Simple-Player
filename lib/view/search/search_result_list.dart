@@ -42,31 +42,24 @@ class SearchResultListState extends State<SearchResultList> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Expanded(
-            child: ListView.builder(
-                itemCount: _items.length,
-                itemBuilder: (BuildContext context, int index) {
-                  if (index == _items.length - 1) {
-                    // 滚动至底部动态添加
-                    widget
-                        .dynamicAdd(++pageIndex, widget.pageSize)
-                        .then((value) {
-                      _items.addAll(value);
-                      setState(() {});
-                    });
-                  }
-                  return ListTile(
-                    title:
-                        Text("${_items[index].artist} - ${_items[index].name}"),
-                    onTap: () {
-                      widget.itemTap(_items[index]);
-                    },
-                  );
-                }))
-      ],
-    );
+    return Expanded(
+        child: ListView.builder(
+            itemCount: _items.length,
+            itemBuilder: (BuildContext context, int index) {
+              if (index == _items.length - 1) {
+                // 滚动至底部动态添加
+                widget.dynamicAdd(++pageIndex, widget.pageSize).then((value) {
+                  _items.addAll(value);
+                  setState(() {});
+                });
+              }
+              return ListTile(
+                title: Text("${_items[index].artist} - ${_items[index].name}"),
+                onTap: () {
+                  widget.itemTap(_items[index]);
+                },
+              );
+            }));
   }
 
   /// 添加项

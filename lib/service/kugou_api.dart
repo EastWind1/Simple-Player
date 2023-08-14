@@ -16,7 +16,7 @@ class KugouApi extends PlatFormApi {
 
   @override
   Future<List<MusicInfo>> search(String keyWord, int pageIndex, int pageSize) async {
-    http.Response res = await http.get(Uri.parse("http://mobilecdn.kugou.com/api/v3/search/song?format=json&keyword=$keyWord&page=$pageIndex&pagesize=$pageSize&showtype=1"));
+    http.Response res = await http.get(Uri.parse("https://songsearch.kugou.com/song_search_v2?keyword=$keyWord&page=$pageIndex&pagesize=$pageSize&userid=0&clientver=&platform=WebFilter&filter=2&iscorrection=1&privilege_filter=0"));
 
     if (res.statusCode == 200) {
       List<dynamic> list = jsonDecode(res.body)['data']['info'] as List<dynamic>;

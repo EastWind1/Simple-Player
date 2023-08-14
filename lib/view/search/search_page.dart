@@ -1,5 +1,7 @@
 import 'package:flutter/cupertino.dart';
+import 'package:simple_player/common/event_bus.dart';
 import 'package:simple_player/service/kugou_api.dart';
+import 'package:simple_player/service/kuwo_api.dart';
 import 'package:simple_player/service/platform_api.dart';
 import 'package:simple_player/view/search/search_bar.dart';
 import 'package:simple_player/view/search/search_result_list.dart';
@@ -12,7 +14,7 @@ class SearchPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
+    return Column(
       children: [
         SearchBar(key: searchBarKey, onSearch: onSearch),
         SearchResultList(
@@ -26,8 +28,9 @@ class SearchPage extends StatelessWidget {
 
   /// 搜索动作回调
   onSearch(String keyWorld) {
-    KugouApi().search(keyWorld, 0, 20).then((value) =>
-        searchResultListKey.currentState?.addAll(value));
+    KugouApi()
+        .search(keyWorld, 0, 20)
+        .then((value) => searchResultListKey.currentState?.addAll(value));
   }
 
   /// 结果动态滚动添加
@@ -38,8 +41,13 @@ class SearchPage extends StatelessWidget {
     }
     return await KugouApi().search(curKey, pageIndex, pageSize);
   }
+
   /// 列表项点击
   itemTap(MusicInfo info) {
-
+    KuwoApi().getDetail(info).then((value) {
+      if (value != null) {
+        EventBus().addAndPlay.sink.add(value);
+      }
+    });
   }
 }

@@ -12,23 +12,15 @@ class SearchBar extends StatefulWidget {
 
 class SearchBarState extends State<SearchBar> {
   String curText = "";
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(10, 0, 10, 0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          Expanded(
-              child: TextField(
-                  decoration: const InputDecoration(
-                      hintText: "Enter keyword and press enter"),
-                  onSubmitted: (value) async {
-                    curText = value;
-                    widget.onSearch(value);
-                  }))
-        ],
-      ),
-    );
+    return TextField(
+        decoration:
+            const InputDecoration(hintText: "Enter keyword and press enter"),
+        onSubmitted: (value) {
+          curText = value;
+          widget.onSearch(value);
+        });
   }
 }
